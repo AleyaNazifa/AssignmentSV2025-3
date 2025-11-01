@@ -12,47 +12,65 @@ st.write(
 )
 st.markdown("---")
 
-# ------------------ DATA LOADING & MONTHLY AGG ------------------
-DATA_URL = "https://raw.githubusercontent.com/AleyaNazifa/AssignmentSV2025-3/refs/heads/main/hfdm_data%20-%20Upload.csv"
+import time
 
-@st.cache_data
-def load_monthly(url: str) -> pd.DataFrame:
+DATA_URL = "https://raw.githubusercontent.com/AleyaNazifa/AssignmentSV2025-1/refs/heads/main/hfdm_data%20-%20Upload.csv"
+
+@st.cache_data(show_spinner=False)
+def load_raw(url: str) -> pd.DataFrame:
     df = pd.read_csv(url)
-    # normalize columns
     df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+    return df
 
-    if "date" not in df.columns:
-        raise ValueError("CSV must contain a 'Date' column.")
+with st.status("Loading & validating dataset…", expanded=False) as s:
+    try:
+        df_raw = load_raw(DATA_URL)
+        time.sleep(0.2)  # just to let the status animate
+        s.update(label="Parsing dates…")
 
-    # parse dd/mm/yyyy
-    df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y", errors="coerce")
-    df = df.dropna(subset=["date"]).sort_values("date")
+        if "date" not in df_raw.columns:
+            st.error("❌ CSV must contain a 'Date' column.")
+            st.stop()
 
-    regions = ["southern", "northern", "central", "east_coast", "borneo"]
-    missing = [c for c in regions if c not in df.columns]
-    if missing:
-        raise ValueError(f"Missing region columns: {missing}")
+        df_raw["date"] = pd.to_datetime(df_raw["date"], format="%d/%m/%Y", errors="coerce")
+        df_raw = df_raw.dropna(subset=["date"]).sort_values("date")
 
-    # total daily cases
-    df["total_cases"] = df[regions].sum(axis=1, numeric_only=True)
+        regions = ["southern", "northern", "central", "east_coast", "borneo"]
+        missing = [c for c in regions if c not in df_raw.columns]
+        if missing:
+            st.error(f"❌ Missing region columns: {missing}")
+            st.stop()
 
-    # monthly mean
-    m = (
-        df.set_index("date")
-          .resample("M")
-          .mean(numeric_only=True)
-          .reset_index()
-          .rename(columns={"date": "Date"})
-    )
-    m["Year"] = m["Date"].dt.year
-    m["Month"] = m["Date"].dt.month
-    return m
+        df_raw["total_cases"] = df_raw[regions].sum(axis=1, numeric_only=True)
 
-try:
-    df_m = load_monthly(DATA_URL)
-except Exception as e:
-    st.error(f"❌ Unable to load dataset: {e}")
-    st.stop()
+        s.update(label="Aggregating monthly…")
+        df_m = (
+            df_raw.set_index("date")
+                  .resample("M")
+                  .mean(numeric_only=True)
+                  .reset_index()
+                  .rename(columns={"date": "Date"})
+        )
+        df_m["Year"] = df_m["Date"].dt.year
+        df_m["Month"] = df_m["Date"].dt.month
+
+        if df_m.empty or df_m["total_cases"].isna().all():
+            st.error("❌ Monthly data is empty. Check if the CSV has numeric case values for regions.")
+            st.stop()
+
+        s.update(state="complete", label="✅ Data ready")
+
+    except Exception as e:
+        s.update(state="error", label="❌ Failed to load data")
+        st.error(f"Error: {e}")
+        st.stop()
+
+with st.expander("🔎 Debug: data status", expanded=False):
+    st.write("**Columns:**", list(df_raw.columns))
+    st.write("**Date range:**", df_raw["date"].min(), "→", df_raw["date"].max())
+    st.write("**Rows (raw / monthly):**", len(df_raw), "/", len(df_m))
+    st.dataframe(df_m.head(), use_container_width=True)
+
 
 # ------------------ SUMMARY BOX (3 METRICS, DYNAMIC) ------------------
 avg_monthly = df_m["total_cases"].mean()
