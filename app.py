@@ -21,10 +21,5 @@ visualise = st.Page(
 )
 
 # --- Navigation Menu ---
-pg = st.navigation(
-    {
-        "Menu": [home, visualise]
-    }
-)
-
+pg = st.navigation({"Menu": [home, visualise]})
 pg.run()
