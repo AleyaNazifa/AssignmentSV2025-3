@@ -1,11 +1,5 @@
-try:
-    import streamlit as st
-    import pandas as pd
-except ModuleNotFoundError:
-    raise SystemExit(
-        "Missing packages. Ensure requirements.txt includes:\n"
-        "streamlit==1.39.0\npandas==2.2.2"
-    )
+import streamlit as st
+import pandas as pd
 
 # ------------------ TITLE & OBJECTIVE ------------------
 st.title("🦠 Objective 1: HFMD Temporal & Seasonal Trend (2009–2019)")
