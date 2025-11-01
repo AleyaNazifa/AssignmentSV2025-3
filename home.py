@@ -14,7 +14,7 @@ st.markdown("---")
 
 import time
 
-DATA_URL = "https://raw.githubusercontent.com/AleyaNazifa/AssignmentSV2025-1/refs/heads/main/hfdm_data%20-%20Upload.csv"
+DATA_URL = "https://raw.githubusercontent.com/AleyaNazifa/AssignmentSV2025-3/refs/heads/main/hfdm_data%20-%20Upload.csv"
 
 @st.cache_data(show_spinner=False)
 def load_raw(url: str) -> pd.DataFrame:
